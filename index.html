@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trench Arcade Portal</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0a0e14;
+            --panel-bg: #101622;
+            --border-color: #1f293d;
+            --text-color: #c9d1d9;
+            --neon-blue: #00f0ff;
+            --neon-red: #ff3e3e;
+            --neon-gold: #ffb800;
+            --wordle-dark: #1b2334;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 10px;
+            background-image: linear-gradient(rgba(0, 240, 255, 0.01) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 240, 255, 0.01) 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow-x: hidden;
+        }
+
+        h1 { 
+            color: var(--neon-blue); 
+            font-size: 24px; 
+            margin: 10px 0 5px 0; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+        
+        .subtitle { 
+            color: #5f7594; 
+            font-size: 11px; 
+            margin-bottom: 20px; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .hub-container, .arena-container { 
+            display: block; 
+            max-width: 100%; 
+            margin: 0 auto; 
+            box-sizing: border-box;
+        }
+
+        .arena-container { display: none; }
+        
+        .tier-title {
+            text-align: left;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 20px auto 8px auto;
+            padding-left: 5px;
+            font-weight: bold;
+        }
+
+        .game-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            margin: 14px 0;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: var(--neon-blue);
+        }
+
+        .game-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        .premium-card::before { background: var(--neon-gold); }
+        .premium-card:hover { 
+            border-color: var(--neon-gold);
+            box-shadow: 0 0 15px rgba(255, 184, 0, 0.2);
+        }
+
+        .game-title { font-size: 16px; font-weight: bold; color: #fff; margin: 0; display: flex; align-items: center; justify-content: space-between;}
+        .game-desc { font-size: 12px; color: #768ca7; margin-top: 6px; line-height: 1.4; }
+        .high-stakes { background: rgba(255, 184, 0, 0.15); color: var(--neon-gold); padding: 2px 6px; border-radius: 4px; font-size: 10px; border: 1px solid var(--neon-gold);}
+
+        .canvas-wrapper {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 0 5px;
+            box-sizing: border-box;
+        }
+
+        #game-canvas {
+            background: #0d131f;
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            display: block;
+            width: 100%;
+            height: auto;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        /* 🧩 NATIVE WORDLE DOM GRID STYLES */
+        #wordle-board {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto 15px auto;
+        }
+
+        .wordle-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .wordle-cell {
+            width: 48px;
+            height: 48px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--panel-bg);
+            transition: all 0.2s ease;
+        }
+
+        #wordle-keyboard {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            max-width: 350px;
+            margin: 15px auto 0 auto;
+        }
+
+        .kbd-row {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .kbd-btn {
+            background: #172030;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 12px 6px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+            text-transform: uppercase;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .kbd-btn.wide { flex: 1.5; background: #223147; font-size: 11px;}
+        
+        .ui-box {
+            margin: 25px 0;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .leaderboard-title { font-weight: bold; color: var(--neon-gold); margin-bottom: 12px; font-size: 13px; letter-spacing: 1px;}
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px solid #172030;
+            font-size: 13px;
+        }
+        .leaderboard-entry:last-child { border-bottom: none; }
+        .score-val { color: var(--neon-blue); font-weight: bold; }
+        
+        .btn-group { margin-top: 20px; display: flex; justify-content: center; gap: 10px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;}
+        .btn {
+            background-color: #172030;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 14px 20px;
+            font-size: 13px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            flex: 1;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .btn-action { 
+            background-color: #002b47; 
+            color: var(--neon-blue); 
+            border: 1px solid var(--neon-blue);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="hub-screen" class="hub-container">
+        <h1>Trench Arcade</h1>
+        <div class="subtitle">Select core matrix to deploy engine</div>
+
+        <div class="tier-title" style="color: #768ca7;">Rex Standard Tier Modules (Free)</div>
+        
+        <div class="game-card" onclick="launchGame('dino')">
+            <div class="game-title">🦖 CHROME DINO RUNNER</div>
+            <p class="game-desc">Advanced multi-hazard runtime environment. Features dynamic shifts and adaptive pacing.</p>
+        </div>
+
+        <div class="game-card" onclick="launchGame('catcher')">
+            <div class="game-title">🪣 TRENCH CATCHER</div>
+            <p class="game-desc">Interfere with falling code streams inside a localized mainframe downpour.</p>
+        </div>
+
+        <div class="tier-title" style="color: var(--neon-gold);">⚡ High Stakes Premium Tier (500 PP / 3 Rounds)</div>
+
+        <div class="game-card premium-card" onclick="launchGame('flappy')">
+            <div class="game-title">⚡ FLAPPY BIRD <span class="high-stakes">PREMIUM</span></div>
+            <p class="game-desc">Navigate atmospheric barriers under hyper speed scaling parameters.</p>
+        </div>
+
+        <div class="game-card premium-card" onclick="launchGame('wordle')">
+            <div class="game-title">🧩 CODE WORDLE <span class="high-stakes">PREMIUM</span></div>
+            <p class="game-desc">Decipher a completely random 5-letter tactical code stream pulled live from the global server matrix.</p>
+        </div>
+
+        <div class="ui-box">
+            <div class="leaderboard-title">🏆 CORE MATRIX RANKINGS</div>
+            <div id="global-board">
+                <div class="leaderboard-entry"><span>1. Ayanokoji (Flappy)</span><span class="score-val">142</span></div>
+                <div class="leaderboard-entry"><span>2. Koenji (Dino)</span><span class="score-val">3,800</span></div>
+                <div class="leaderboard-entry"><span>3. Ryuen (Wordle)</span><span class="score-val">500</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="arena-screen" class="arena-container">
+        <h1 id="active-title">RUNNING PLATFORM...</h1>
+        <div id="live-score" style="font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #fff;">SCORE: 0</div>
+        
+        <div class="canvas-wrapper" id="canvas-frame">
+            <canvas id="game-canvas" width="360" height="240"></canvas>
+        </div>
+
+        <div id="wordle-board"></div>
+        <div id="wordle-keyboard"></div>
+        
+        <div class="btn-group">
+            <button class="btn btn-action" id="control-btn" onclick="triggerCoreLoop()">START RUN</button>
+            <button class="btn" onclick="exitToHub()">🔌 ABORT</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = null;
+        let initDataString = "";
+        if (window.Telegram && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            initDataString = tg.initData || "";
+            try {
+                tg.ready();
+                tg.expand();
+            } catch (err) {}
+        }
+
+        const hubScreen = document.getElementById("hub-screen");
+        const arenaScreen = document.getElementById("arena-screen");
+        const canvasFrame = document.getElementById("canvas-frame");
+        const canvas = document.getElementById("game-canvas");
+        const ctx = canvas.getContext("2d");
+        const wordleBoard = document.getElementById("wordle-board");
+        const wordleKeyboard = document.getElementById("wordle-keyboard");
+
+        let activeGame = "";
+        let gameRunning = false;
+        let score = 0;
+        let loopId;
+        let frameCount = 0;
+        let baseSpeed = 4.0;
+
+        let entity = {};
+        let elements = [];
+
+        // Wordle State Registers
+        let targetWord = "";
+        let currentWordleRow = 0;
+        let currentWordleCol = 0;
+        const WORDLE_ROWS = 6;
+        const WORDLE_COLS = 5;
+
+        // Route Key listeners safely
+        window.addEventListener("keydown", (e) => { 
+            if(activeGame === 'wordle') {
+                handleWordlePhysicalInput(e);
+            } else {
+                if(e.code === "Space" || e.code === "ArrowLeft" || e.code === "ArrowRight") handleInput(e.code); 
+            }
+        });
+        canvas.addEventListener("touchstart", (e) => { handleInput("TAP", e); e.preventDefault(); }, {passive: false});
+
+        function launchGame(gameKey) {
+            hubScreen.style.display = "none";
+            arenaScreen.style.display = "block";
+            activeGame = gameKey;
+            
+            // Layout View Configuration Toggles
+            if (gameKey === 'wordle') {
+                canvasFrame.style.display = "none";
+                wordleBoard.style.display = "flex";
+                wordleKeyboard.style.display = "flex";
+                document.getElementById("active-title").innerText = "🧩 CODE WORDLE";
+            } else {
+                canvasFrame.style.display = "block";
+                wordleBoard.style.display = "none";
+                wordleKeyboard.style.display = "none";
+                if(gameKey === 'dino') document.getElementById("active-title").innerText = "🦖 DINO RUNNER";
+                if(gameKey === 'catcher') document.getElementById("active-title").innerText = "🪣 TRENCH CATCHER";
+                if(gameKey === 'flappy') document.getElementById("active-title").innerText = "⚡ FLAPPY BIRD";
+            }
+            
+            resetState();
+        }
+
+        function exitToHub() { gameRunning = false; cancelAnimationFrame(loopId); arenaScreen.style.display = "none"; hubScreen.style.display = "block"; }
+
+        function resetState() {
+            score = 0; gameRunning = false; elements = []; frameCount = 0; baseSpeed = 4.5;
+            document.getElementById("live-score").innerText = "SCORE: 0";
+            document.getElementById("control-btn").style.display = "inline-block";
+            document.getElementById("control-btn").innerText = "START RUN";
+            
+            if (activeGame === 'dino') {
+                entity = { x: 40, y: 182, w: 22, h: 28, jumping: false, velocity: 0 };
+                renderStaticPreview();
+            } else if (activeGame === 'catcher') {
+                entity = { x: 150, y: 210, w: 60, h: 16, speed: 25 };
+                renderStaticPreview();
+            } else if (activeGame === 'flappy') {
+                entity = { x: 60, y: 100, w: 24, h: 18, gravity: 0.35, velocity: 0, jumpPower: -5.5 };
+                renderStaticPreview();
+            } else if (activeGame === 'wordle') {
+                currentWordleRow = 0;
+                currentWordleCol = 0;
+                targetWord = "";
+                buildWordleDOMGrid();
+                buildWordleVirtualKeyboard();
+            }
+        }
+
+        function handleInput(type, event) {
+            if (!gameRunning) return;
+            if (activeGame === 'dino' && (type === "Space" || type === "TAP")) {
+                if (!entity.jumping) { entity.jumping = true; entity.velocity = -12.5; }
+            } 
+            else if (activeGame === 'catcher') {
+                if (type === "ArrowLeft") entity.x = Math.max(0, entity.x - entity.speed);
+                if (type === "ArrowRight") entity.x = Math.min(canvas.width - entity.w, entity.x + entity.speed);
+                if (type === "TAP") {
+                    let rect = canvas.getBoundingClientRect();
+                    let touchX = event.touches[0].clientX - rect.left;
+                    entity.x = (touchX / rect.width) * canvas.width - entity.w / 2;
+                }
+            } 
+            else if (activeGame === 'flappy' && (type === "Space" || type === "TAP")) {
+                entity.velocity = entity.jumpPower;
+            }
+        }
+
+        async function triggerCoreLoop() {
+            if (gameRunning) return;
+            
+            if (activeGame === 'wordle') {
+                document.getElementById("control-btn").style.display = "none";
+                gameRunning = true;
+                document.getElementById("live-score").innerText = "FETCHING CORE CODE...";
+                try {
+                    // Pull a secure, 100% random 5-letter word from a dictionary API
+                    let response = await fetch("https://random-word-api.herokuapp.com/word?length=5");
+                    let data = await response.json();
+                    targetWord = data[0].toUpperCase();
+                    document.getElementById("live-score").innerText = "TARGET GENERATED. SUBMIT CODE.";
+                    console.log("Telemetry target logged."); 
+                } catch(e) {
+                    // Secondary emergency backup pool if connection parameters drop
+                    const backups = ["INDEX", "SHIFT", "PRIME", "CRYPT", "TRACE", "LOGIC", "BLOCK", "PHASE"];
+                    targetWord = backups[Math.floor(Math.random() * backups.length)];
+                    document.getElementById("live-score").innerText = "LOCAL TARGET PROVISIONED.";
+                }
+                return;
+            }
+
+            gameRunning = true;
+            document.getElementById("control-btn").style.display = "none";
+            
+            if (activeGame === 'dino') {
+                elements = [generateDinoObstacle(400)]; dinoEngine();
+            } else if (activeGame === 'catcher') {
+                elements = [{ x: Math.random() * 320, y: 0, w: 14, h: 14, speed: 3.5 }]; catcherEngine();
+            } else if (activeGame === 'flappy') {
+                elements = [{ x: 380, topH: 60, bottomY: 145, w: 35, passed: false }]; flappyEngine();
+            }
+        }
+
+        // ==================== ENGINE 1: DINO RUNNER ====================
+        function generateDinoObstacle(startX) {
+            let rand = Math.random();
+            if (rand < 0.3) return { x: startX, type: 'cactus_single', w: 12, h: 26 };
+            if (rand < 0.55) return { x: startX, type: 'cactus_double', w: 22, h: 26 };
+            if (rand < 0.75) return { x: startX, type: 'cactus_big', w: 16, h: 36 };
+            return { x: startX, type: 'vulture', w: 22, h: 14, y: Math.random() < 0.5 ? 172 : 130, wing: 0 };
+        }
+
+        function drawDinoSprite(x, y, theme) {
+            ctx.fillStyle = theme.dinoColor;
+            ctx.fillRect(x + 8, y, 14, 8); ctx.fillRect(x + 16, y + 8, 6, 2);
+            ctx.fillStyle = theme.bgColor; ctx.fillRect(x + 10, y + 2, 2, 2); ctx.fillStyle = theme.dinoColor;
+            ctx.fillRect(x + 4, y + 8, 8, 12); ctx.fillRect(x, y + 12, 12, 8); ctx.fillRect(x + 12, y + 12, 4, 2);
+            let legFrame = Math.floor(frameCount / 5) % 2;
+            if (entity.jumping) { ctx.fillRect(x + 4, y + 20, 2, 4); ctx.fillRect(x + 10, y + 20, 2, 4); }
+            else if (legFrame === 0) { ctx.fillRect(x + 2, y + 20, 2, 6); ctx.fillRect(x + 10, y + 20, 2, 3); }
+            else { ctx.fillRect(x + 4, y + 20, 2, 3); ctx.fillRect(x + 8, y + 20, 2, 6); }
+        }
+
+        function dinoEngine() {
+            if (!gameRunning) return; frameCount++;
+            baseSpeed = 4.5 + (score / 150);
+            let cycle = Math.floor(frameCount / 450) % 2;
+            let theme = cycle === 0 
+                ? { bgColor: "#0e1626", groundColor: "#00f0ff", dinoColor: "#00f0ff", hazardColor: "#ff3e3e" }
+                : { bgColor: "#f0f4f8", groundColor: "#1f293d", dinoColor: "#1f293d", hazardColor: "#b82c2c" };
+
+            ctx.fillStyle = theme.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = theme.groundColor; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 210); ctx.lineTo(canvas.width, 210); ctx.stroke();
+
+            if (entity.jumping) { entity.velocity += 0.75; entity.y += entity.velocity; if (entity.y >= 182) { entity.y = 182; entity.jumping = false; } }
+            drawDinoSprite(entity.x, entity.y, theme);
+
+            elements.forEach(obs => {
+                obs.x -= baseSpeed;
+                ctx.fillStyle = theme.hazardColor;
+                if (obs.type.startsWith('cactus')) {
+                    ctx.fillRect(obs.x + obs.w/2 - 2, 210 - obs.h, 4, obs.h); ctx.fillRect(obs.x, 210 - obs.h + 8, obs.w, 3);
+                } else if (obs.type === 'vulture') {
+                    obs.wing = Math.floor(frameCount / 6) % 2;
+                    ctx.fillRect(obs.x, obs.y, obs.w, 6); ctx.fillRect(obs.x + 4, obs.y + 3, 8, 5);
+                    ctx.fillRect(obs.x + 4, obs.wing === 0 ? obs.y - 4 : obs.y + 6, 3, 4);
+                }
+                let obsY = (obs.type === 'vulture') ? obs.y : (210 - obs.h);
+                if (obs.x < entity.x + entity.w && obs.x + obs.w > entity.x && obsY < entity.y + entity.h && obsY + obs.h > entity.y) terminateRun();
+                if (obs.x < -30) {
+                    score += 10; updateScoreText();
+                    let newObs = generateDinoObstacle(380 + Math.random() * 80);
+                    Object.assign(obs, newObs);
+                }
+            });
+            loopId = requestAnimationFrame(dinoEngine);
+        }
+
+        // ==================== ENGINE 2: TRENCH CATCHER ====================
+        function catcherEngine() {
+            if (!gameRunning) return; frameCount++;
+            baseSpeed = 3.5 + (score / 120);
+            ctx.fillStyle = "#060910"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "rgba(0, 240, 255, 0.05)";
+            for(let i = 0; i < canvas.width; i += 30) { ctx.fillRect(i, (frameCount * (2 + (i % 3))) % canvas.height, 1, 15); }
+            ctx.fillStyle = "#00f0ff"; ctx.fillRect(entity.x, entity.y, entity.w, 4);
+            ctx.fillStyle = "rgba(0, 240, 255, 0.2)"; ctx.fillRect(entity.x + 6, entity.y + 4, entity.w - 12, entity.h - 4);
+            elements.forEach(drop => {
+                drop.y += baseSpeed;
+                ctx.fillStyle = "#ffb800"; ctx.beginPath(); ctx.arc(drop.x + drop.w/2, drop.y + drop.h/2, drop.w/2, 0, Math.PI*2); ctx.fill();
+                if (drop.y + drop.h >= entity.y && drop.x + drop.w >= entity.x && drop.x <= entity.x + entity.w) {
+                    score += 10; updateScoreText(); drop.y = 0; drop.x = Math.random() * (canvas.width - 20);
+                }
+                if (drop.y > canvas.height) terminateRun();
+            });
+            loopId = requestAnimationFrame(catcherEngine);
+        }
+
+        // ==================== ENGINE 3: FLAPPY BIRD ====================
+        function flappyEngine() {
+            if (!gameRunning) return; frameCount++;
+            baseSpeed = 2.5 + (score / 15);
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, "#1a0933"); skyGrad.addColorStop(1, "#101622");
+            ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            entity.velocity += entity.gravity; entity.y += entity.velocity;
+            ctx.fillStyle = "#ffb800"; ctx.fillRect(entity.x, entity.y, entity.w, entity.h);
+            if (entity.y < 0 || entity.y > canvas.height - entity.h) terminateRun();
+
+            elements.forEach(pipe => {
+                pipe.x -= baseSpeed;
+                ctx.fillStyle = "rgba(255, 62, 62, 0.2)"; ctx.strokeStyle = "#ff3e3e"; ctx.lineWidth = 2;
+                ctx.fillRect(pipe.x, 0, pipe.w, pipe.topH); ctx.strokeRect(pipe.x, 0, pipe.w, pipe.topH);
+                ctx.fillRect(pipe.x, pipe.bottomY, pipe.w, canvas.height - pipe.bottomY); ctx.strokeRect(pipe.x, pipe.bottomY, pipe.w, canvas.height - pipe.bottomY);
+
+                if (entity.x + entity.w > pipe.x && entity.x < pipe.x + pipe.w) {
+                    if (entity.y < pipe.topH || entity.y + entity.h > pipe.bottomY) terminateRun();
+                }
+                if (!pipe.passed && pipe.x < entity.x) { pipe.passed = true; score += 1; updateScoreText(); }
+                if (pipe.x < -40) {
+                    pipe.x = 380; pipe.passed = false;
+                    let gap = Math.max(68, 80 - (score * 0.5));
+                    pipe.topH = 30 + Math.random() * 100; pipe.bottomY = pipe.topH + gap;
+                }
+            });
+            loopId = requestAnimationFrame(flappyEngine);
+        }
+
+        // ==================== 🧩 ENGINE 4: WORDLE CONSOLE STRUCTURE ====================
+        function buildWordleDOMGrid() {
+            wordleBoard.innerHTML = "";
+            for (let r = 0; r < WORDLE_ROWS; r++) {
+                let rowElement = document.createElement("div");
+                rowElement.className = "wordle-row";
+                rowElement.id = `w-row-${r}`;
+                for (let c = 0; c < WORDLE_COLS; c++) {
+                    let cell = document.createElement("div");
+                    cell.className = "wordle-cell";
+                    cell.id = `w-cell-${r}-${c}`;
+                    rowElement.appendChild(cell);
+                }
+                wordleBoard.appendChild(rowElement);
+            }
+        }
+
+        function buildWordleVirtualKeyboard() {
+            wordleKeyboard.innerHTML = "";
+            const setupLayout = [
+                ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
+                ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
+                ["ENTER", "z", "x", "c", "v", "b", "n", "m", "⌫"]
+            ];
+            setupLayout.forEach(rowKeys => {
+                let row = document.createElement("div");
+                row.className = "kbd-row";
+                row.style.margin = "3px 0";
+                rowKeys.forEach(keyChar => {
+                    let button = document.createElement("button");
+                    button.innerText = keyChar;
+                    button.className = "kbd-btn";
+                    if (keyChar === "ENTER" || keyChar === "⌫") button.classList.add("wide");
+                    button.onclick = () => processWordleInputToken(keyChar);
+                    row.appendChild(button);
+                });
+                wordleKeyboard.appendChild(row);
+            });
+        }
+
+        function handleWordlePhysicalInput(e) {
+            if (!gameRunning) return;
+            if (e.key === "Enter") processWordleInputToken("ENTER");
+            else if (e.key === "Backspace") processWordleInputToken("⌫");
+            else if (/^[a-zA-Z]$/.test(e.key)) processWordleInputToken(e.key.toLowerCase());
+        }
+
+        function processWordleInputToken(token) {
+            if (!gameRunning || !targetWord) return;
+
+            if (token === "⌫") {
+                if (currentWordleCol > 0) {
+                    currentWordleCol--;
+                    document.getElementById(`w-cell-${currentWordleRow}-${currentWordleCol}`).innerText = "";
+                }
+            } else if (token === "ENTER") {
+                if (currentWordleCol === WORDLE_COLS) commitWordleRowEvaluation();
+            } else {
+                if (currentWordleCol < WORDLE_COLS) {
+                    document.getElementById(`w-cell-${currentWordleRow}-${currentWordleCol}`).innerText = token;
+                    currentWordleCol++;
+                }
+            }
+        }
+
+        function commitWordleRowEvaluation() {
+            let compiledGuess = "";
+            for (let c = 0; c < WORDLE_COLS; c++) {
+                compiledGuess += document.getElementById(`w-cell-${currentWordleRow}-${c}`).innerText;
+            }
+            compiledGuess = compiledGuess.toUpperCase();
+
+            // Frequency analysis maps to evaluate duplicate tracking parameters accurately
+            let targetLetterCounts = {};
+            for (let i = 0; i < targetWord.length; i++) {
+                targetLetterCounts[targetWord[i]] = (targetLetterCounts[targetWord[i]] || 0) + 1;
+            }
+
+            let matches = Array(WORDLE_COLS).fill("gray");
+
+            // Pass 1: Confirm Exact Coordinates (Green Matrix matches)
+            for (let i = 0; i < WORDLE_COLS; i++) {
+                if (compiledGuess[i] === targetWord[i]) {
+                    matches[i] = "green";
+                    targetLetterCounts[compiledGuess[i]]--;
+                }
+            }
+
+            // Pass 2: Map Positional Multi-matches (Yellow Matrix offsets)
+            for (let i = 0; i < WORDLE_COLS; i++) {
+                if (matches[i] !== "green" && targetWord.includes(compiledGuess[i])) {
+                    if (targetLetterCounts[compiledGuess[i]] > 0) {
+                        matches[i] = "yellow";
+                        targetLetterCounts[compiledGuess[i]]--;
+                    }
+                }
+            }
+
+            // Repaint view row interface frames dynamically
+            for (let i = 0; i < WORDLE_COLS; i++) {
+                let cell = document.getElementById(`w-cell-${currentWordleRow}-${i}`);
+                if (matches[i] === "green") cell.style.backgroundColor = "var(--neon-blue)";
+                else if (matches[i] === "yellow") cell.style.backgroundColor = "var(--neon-gold)";
+                else cell.style.backgroundColor = "var(--wordle-dark)";
+            }
+
+            if (compiledGuess === targetWord) {
+                // Scoring system: Fewer rows used = more base score allocation points
+                score = (6 - currentWordleRow) * 100;
+                document.getElementById("live-score").innerText = `DECRYPTED! CODE: ${targetWord}`;
+                terminateRun();
+            } else {
+                currentWordleRow++;
+                currentWordleCol = 0;
+                if (currentWordleRow >= WORDLE_ROWS) {
+                    score = 0;
+                    document.getElementById("live-score").innerText = `LOCKOUT! ACCESSED FAILED. WORD: ${targetWord}`;
+                    terminateRun();
+                }
+            }
+        }
+
+        function updateScoreText() { document.getElementById("live-score").innerText = "SCORE: " + score; }
+        
+        function renderStaticPreview() { 
+            drawBackgroundGrid();
+            ctx.fillStyle = "#5f7594"; ctx.font = "bold 11px 'Courier New'"; ctx.textAlign = "center";
+            ctx.fillText("READY FOR DEPLOYMENT...", canvas.width/2, canvas.height/2 - 10);
+            ctx.fillText("PRESS START RUN TO ENGAGE", canvas.width/2, canvas.height/2 + 10);
+        }
+
+        function drawBackgroundGrid() {
+            ctx.fillStyle = "#0d131f"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "#161f30"; ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            for(let j=0; j<canvas.height; j+=20) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(canvas.width, j); ctx.stroke(); }
+        }
+
+        // ==================== POST BACKEND RECONCILIATION LAYER ====================
+        function terminateRun() {
+            gameRunning = false; cancelAnimationFrame(loopId);
+            document.getElementById("control-btn").style.display = "inline-block";
+            document.getElementById("control-btn").innerText = "RETRY MODULE";
+            
+            const payload = {
+                game_name: activeGame,
+                score: score,
+                initData: initDataString
+            };
+
+            // Dispatches directly back to your local Termux webhook handler port
+            fetch('/submit-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => console.log("Sync sequence acknowledged."))
+            .catch(err => console.log("Sandbox execution track complete. Score: " + score));
+            
+            if (!tg) {
+                alert(`🏁 Run completed in Sandbox!\nFinal Calculated Score: ${score}`);
+            }
+        }
+    </script>
+</body>
+</html>
